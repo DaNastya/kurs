@@ -10,7 +10,7 @@
 
 
 
-const CString g_EmptyName = "¬аше им€?";
+const CString g_EmptyName = "";
 const CString g_strStopChat = "ќстановить чат";
 const CString g_strExitFromChat = "¬ыход из чата";
 
@@ -22,15 +22,15 @@ struct SENDBUFFER
 		typemessage = 0; 
 		countpeople = 0;
 		stopchat = false;
-		ZeroMemory(name, sizeof(TCHAR)*14); 
-		ZeroMemory(buffer, sizeof(TCHAR)*202);
+		ZeroMemory(name, sizeof(char)*14); 
+		ZeroMemory(buffer, sizeof(char)*202);
 	}
 
 	int typemessage;
 	int countpeople;
 	bool stopchat;
-	TCHAR name[14];
-	TCHAR buffer[202];
+	char name[14];
+	char buffer[202];
 };
 
 
@@ -79,12 +79,6 @@ public:
 	void OnReceive(void);
 
 private:
-
-	// запрещает доступ к управлени€м
-	void DisabledControl(bool server);
-
-	// разрешить доступ к управлени€м после закрыти€ сокетов
-	void EnabledControl(void);
 
 	void StopChat(void);
 

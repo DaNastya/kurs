@@ -10,12 +10,6 @@
 #include "resource.h"		// main symbols
 
 
-
-
-// CChatCppApp:
-// See ChatCpp.cpp for the implementation of this class
-//
-
 class CChatCppApp : public CWinApp
 {
 public:

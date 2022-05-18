@@ -18,7 +18,81 @@ boolean history_flag = false;
 
 
 // CChatCppDlg dialog
+class Adapter {
+public:
+	void add_str(CEdit* m_wndChat, CString strChat) {
+		m_wndChat->SetWindowText(strChat);
+		int number_line = m_wndChat->GetLineCount();
+		m_wndChat->LineScroll(number_line);
+	}
 
+	// Запрещает доступ к управлениям при работе 
+	// приложения в режиме сервера или клиента.
+	// Цель запрета - избежать исключения от 
+	// случайного нажатия "неправильных" кнопок.
+
+	void disable_control_field(CButton* m_ButtonSend2,
+		CButton* m_ButtonSend3,
+		CButton* m_ButtonSend,
+		CEdit* m_wndPort,
+		CEdit* m_wndIPAddress,
+		CButton* m_ButtonStopChat,
+		CButton* m_ButtonStartClient,
+		CButton* m_ButtonStartServer,
+		bool server
+	) {
+		// Запреты.
+		m_wndIPAddress->EnableWindow(FALSE);
+		m_wndPort->EnableWindow(FALSE);
+		m_ButtonSend->EnableWindow(FALSE);
+		m_ButtonSend2->EnableWindow(FALSE);
+		m_ButtonSend3->EnableWindow(FALSE);
+
+		if (server == true)
+		{
+			m_ButtonStopChat->SetWindowText(g_strStopChat);
+			m_ButtonStartClient->EnableWindow(FALSE);
+		}
+		else
+		{
+			m_ButtonStopChat->SetWindowText(g_strExitFromChat);
+			m_ButtonStartServer->EnableWindow(FALSE);
+		}
+
+		// Разрешения.
+		// Разрешить возможность выхода из чата.
+		m_ButtonStopChat->EnableWindow(TRUE);
+	}
+
+	void anable_control_field(CButton* m_ButtonSend2,
+		CButton* m_ButtonSend3,
+		CButton* m_ButtonSend,
+		CEdit* m_wndPort,
+		CEdit* m_wndIPAddress,
+		CButton* m_ButtonStopChat,
+		CButton* m_ButtonStartClient,
+		CButton* m_ButtonStartServer
+	) {
+		m_wndIPAddress->EnableWindow(TRUE);
+		m_wndPort->EnableWindow(TRUE);
+		m_ButtonStartClient->EnableWindow(TRUE);
+		m_ButtonStartServer->EnableWindow(TRUE);
+
+		// Запреты.
+		m_ButtonStopChat->EnableWindow(FALSE);
+		m_ButtonSend->EnableWindow(FALSE);
+		m_ButtonSend2->EnableWindow(FALSE);
+		m_ButtonSend3->EnableWindow(FALSE);
+	}
+	void onAcceptControl(CButton* m_ButtonSend2,
+		CButton* m_ButtonSend3,
+		CButton* m_ButtonSend
+	) {
+		m_ButtonSend->EnableWindow(TRUE);
+		m_ButtonSend2->EnableWindow(TRUE);
+		m_ButtonSend3->EnableWindow(TRUE);
+	}
+};
 
 CChatCppDlg::CChatCppDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CChatCppDlg::IDD, pParent)
@@ -96,9 +170,7 @@ BOOL CChatCppDlg::OnInitDialog()
 	// Ограничение количества вводимых символов.
 	m_wndName.SetLimitText(12); 
 
-
 	m_wndName.SetWindowText(g_EmptyName);
-
 
 	// Ограничение количества символов в сообщении.
 	m_wndSend.SetLimitText(200); 
@@ -135,9 +207,7 @@ void CChatCppDlg::OnPaint()
 	if (IsIconic())
 	{
 		CPaintDC dc(this); // device context for painting
-
 		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
-
 		// Center icon in client rectangle
 		int cxIcon = GetSystemMetrics(SM_CXICON);
 		int cyIcon = GetSystemMetrics(SM_CYICON);
@@ -145,7 +215,6 @@ void CChatCppDlg::OnPaint()
 		GetClientRect(&rect);
 		int x = (rect.Width() - cxIcon + 1) / 2;
 		int y = (rect.Height() - cyIcon + 1) / 2;
-
 		// Draw the icon
 		dc.DrawIcon(x, y, m_hIcon);
 	}
@@ -173,9 +242,7 @@ void CChatCppDlg::OnBnClickedRadioServer()
 	// если сокет в работе (т.е. только с нулевым сокетом можно начинать работать),
 	// очень неудобно если в чате все будут под одинаковыми именами.
 	if(m_ButtonStartServer.GetCheck() != BST_CHECKED) return;	
-
 	if(m_mainSocket.m_hSocket != INVALID_SOCKET) return;
-
 	if(QueryName() == false)
 	{
 		AfxMessageBox("Введите свое имя для чата!");
@@ -206,7 +273,17 @@ void CChatCppDlg::OnBnClickedRadioServer()
 		else
 		{
 			// Если все в порядке.
-			DisabledControl(true);
+			Adapter adapter;
+			adapter.disable_control_field(
+				&m_ButtonSend2,
+				&m_ButtonSend3,
+				&m_ButtonSend,
+				&m_wndPort,
+				&m_wndIPAddress,
+				&m_ButtonStopChat,
+				&m_ButtonStartClient,
+				&m_ButtonStartServer,
+				true);
 			SetWindowText("Сервер ждет подключения!");
 			// В чате только сервер.
 			m_wndCountPeople.SetWindowText("В чате 1 чел.");
@@ -252,7 +329,16 @@ void CChatCppDlg::OnBnClickedRadioClient()
 			// т.е. практически успешный возврат.
 			if(GetLastError() == WSAEWOULDBLOCK)
 			{
-				DisabledControl(false);
+				Adapter adapter;
+				adapter.disable_control_field(&m_ButtonSend2,
+					&m_ButtonSend3,
+					&m_ButtonSend,
+					&m_wndPort,
+					&m_wndIPAddress,
+					&m_ButtonStopChat,
+					&m_ButtonStartClient,
+					&m_ButtonStartServer, 
+					false);
 			}
 			else
 			{
@@ -273,54 +359,11 @@ void CChatCppDlg::OnBnClickedButtonStopchat()
 	StopChat();
 }
 
-// Запрещает доступ к управлениям при работе 
-// приложения в режиме сервера или клиента.
-// Цель запрета - избежать исключения от 
-// случайного нажатия "неправильных" кнопок.
-void CChatCppDlg::DisabledControl(bool server)
-{
-	// Запреты.
-	m_wndIPAddress.EnableWindow(FALSE);
-	m_wndPort.EnableWindow(FALSE);
-	m_ButtonSend.EnableWindow(FALSE);
-	m_ButtonSend2.EnableWindow(FALSE);
-	m_ButtonSend3.EnableWindow(FALSE);
 
-	if(server == true)
-	{
-		m_ButtonStopChat.SetWindowText(g_strStopChat);
-		m_ButtonStartClient.EnableWindow(FALSE);
-	}
-	else
-	{
-		m_ButtonStopChat.SetWindowText(g_strExitFromChat);
-		m_ButtonStartServer.EnableWindow(FALSE);
-	}
-
-	// Разрешения.
-	// Разрешить возможность выхода из чата.
-	m_ButtonStopChat.EnableWindow(TRUE);
-}
 
 // Разрешить доступ к управлениям после закрытия сокетов.
 // Цель запрета - избежать исключения от 
 // случайного нажатия "неправильных" кнопок.
-void CChatCppDlg::EnabledControl(void)
-{
-	// Разрешения.
-	m_wndIPAddress.EnableWindow(TRUE);
-	m_wndPort.EnableWindow(TRUE);
-	m_ButtonStartClient.EnableWindow(TRUE);
-	m_ButtonStartServer.EnableWindow(TRUE);
-	
-
-	// Запреты.
-	m_ButtonStopChat.EnableWindow(FALSE);
-	m_ButtonSend.EnableWindow(FALSE);
-	m_ButtonSend2.EnableWindow(FALSE);
-	m_ButtonSend3.EnableWindow(FALSE);
-
-}
 
 // Принимаем запросы на подключения
 void CChatCppDlg::OnAccept(void)
@@ -369,7 +412,16 @@ void CChatCppDlg::StopChat(void)
 
 	// Разрешим доступ к управлению для
 	// повторных попыток.
-	EnabledControl();
+	Adapter adapter;
+	adapter.anable_control_field(&m_ButtonSend2,
+		&m_ButtonSend3,
+		&m_ButtonSend,
+		&m_wndPort,
+		&m_wndIPAddress,
+		&m_ButtonStopChat,
+		&m_ButtonStartClient,
+		&m_ButtonStartServer
+	);
 
 	// В чате нет никого.
 	m_wndCountPeople.SetWindowText("В чате 0 чел.");
@@ -446,7 +498,6 @@ void CChatCppDlg::OnReceive(void)
 			
 			CString strChat;
 			m_wndChat.GetWindowText(strChat);
-
 			strChat +=  CString(sb.name) + ": " + CString(sb.buffer) + "\r\n";
 			
 			m_wndChat.SetWindowText(strChat);
@@ -517,7 +568,7 @@ void CChatCppDlg::SendToChat(CString strMessage)
 // Послать буфер подготовленного сообщения в сеть.
 void CChatCppDlg::SendBuffer(SENDBUFFER sb, bool toserver)
 {
-
+	Adapter* adapter = new Adapter();
 	// Если слкет не создан, нечего делать в этой функции.
 	if(m_mainSocket.m_hSocket == INVALID_SOCKET) return;
 
@@ -541,20 +592,14 @@ void CChatCppDlg::SendBuffer(SENDBUFFER sb, bool toserver)
 			if(sb.typemessage == m_TypeMessage::tmChat)
 			{
 				CString strChat;
-				m_wndChat.GetWindowText(strChat);
-				strChat += CString(sb.name) + ": " + CString(sb.buffer)  + "\r\n";
-				m_wndChat.SetWindowText(strChat);
-				int number_line = m_wndChat.GetLineCount();
-				m_wndChat.LineScroll(number_line);
+				strChat += CString(sb.name) + ": " + CString(sb.buffer) + "\r\n";
+				adapter->add_str(&m_wndChat, strChat);
 			}
 			if(sb.typemessage == m_TypeMessage::tmDisconnect)
 			{
 				CString strChat;
-				m_wndChat.GetWindowText(strChat);
-				strChat +=  CString(sb.name) + ": " + "Чат остановлен!"  + "\r\n";
-				m_wndChat.SetWindowText(strChat);
-				int number_line = m_wndChat.GetLineCount();
-				m_wndChat.LineScroll(number_line);
+				strChat += CString(sb.name) + ": " + "Чат остановлен!" + "\r\n";
+				adapter->add_str(&m_wndChat, strChat);
 			}
 		}
 
@@ -565,6 +610,7 @@ void CChatCppDlg::SendBuffer(SENDBUFFER sb, bool toserver)
 		if(send == sizeof(SENDBUFFER))
 			m_wndSend.SetWindowText("");
 	}
+	delete adapter;
 }
 
 
@@ -634,21 +680,7 @@ bool CChatCppDlg::QueryName(void)
 	return true;
 }
 
-
-
-void CChatCppDlg::OnEnChangeEditChat()
-{
-	// TODO:  Если это элемент управления RICHEDIT, то элемент управления не будет
-	// send this notification unless you override the CDialog::OnInitDialog()
-	// функция и вызов CRichEditCtrl().SetEventMask()
-	// with the ENM_CHANGE flag ORed into the mask.
-
-	// TODO:  Добавьте код элемента управления
-}
-
-
-
-
+void CChatCppDlg::OnEnChangeEditChat(){}
 
 void CChatCppDlg::OnBnClickedButtonSend2()
 {
